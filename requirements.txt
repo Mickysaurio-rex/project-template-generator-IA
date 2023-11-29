@@ -9,6 +9,6 @@ typing
 numpy
 mediapipe
 ultralytics
-cv2
 io
 PIL
+cv2

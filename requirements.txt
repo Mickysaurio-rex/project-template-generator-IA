@@ -9,6 +9,5 @@ typing
 numpy
 mediapipe
 ultralytics
-io
-PIL
-cv2
+Pillow
+opencv-python

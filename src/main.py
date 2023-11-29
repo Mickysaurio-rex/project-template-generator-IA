@@ -1,4 +1,3 @@
-from fastapi import FastAPI, Depends
 from starlette.middleware.cors import CORSMiddleware
 from src.llm_service import TemplateLLM
 from src.prompts import ProjectParams
@@ -18,9 +17,16 @@ from fastapi.responses import Response, FileResponse
 import numpy as np
 from PIL import Image, UnidentifiedImageError
 import mediapipe as mp
-from predictor import ObjectDetector
+from typing import Any
+import numpy as np
+import cv2
+from mediapipe.tasks import python
+from mediapipe.tasks.python import vision
+
 
 SETTINGS = get_settings()
+OBJECT_DETECTION_PATH = "src/ssd_mobilenet_v2.tflite"
+
 
 PERSON_COLOR = (70,223,49)
 BOOK_COLOR = (20,37,241)
@@ -35,6 +41,37 @@ app = FastAPI(
     title=SETTINGS.service_name,
     version=SETTINGS.k_revision
 )
+
+class ObjectDetector:
+    def __init__(self, model_path=OBJECT_DETECTION_PATH):
+        base_options = python.BaseOptions(model_asset_path=OBJECT_DETECTION_PATH)
+        options = vision.ObjectDetectorOptions(base_options=base_options,
+                                       score_threshold=0.25,
+                                       )
+        self.model = vision.ObjectDetector.create_from_options(options)
+        self.detection_dict = {}
+    
+    def get_self_detection_dict(self):
+        return self.detection_dict
+
+    def predict_image(self, image_array: np.ndarray):
+        mp_image= mp.Image(image_format=mp.ImageFormat.SRGB, data=image_array)
+        detection = self.model.detect(mp_image)
+        results = []
+        for detection in detection.detections:
+            bbox = detection.bounding_box
+            categories = detection.categories
+            detection_dict = {
+                "bbox": [bbox.origin_x, bbox.origin_y, bbox.width, bbox.height],
+                "name": [(nm.category_name) for nm in categories],
+                "score": [(sc.score) for sc in categories],
+                #"date": [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")]
+
+            }
+            results.append(detection_dict)
+
+        self.detection_dict = detection_dict
+        return results
 
 
 object_predictor = ObjectDetector()
@@ -87,7 +124,7 @@ def detect_objects(
         bbox = result['bbox']
         name = result['name']
         score = result['score']
-        date = result['date']
+        #date = result['date']
 
         dict ={
             "nombre": str(name[0]),
@@ -96,7 +133,7 @@ def detect_objects(
             "punto_y": str(bbox[1]),
             "alto": str(bbox[2]),
             "ancho": str(bbox[3]),
-            "fecha": str(date[0]) 
+            #"fecha": str(date[0]) 
         }
         list_predict.append(dict)
 

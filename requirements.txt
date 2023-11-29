@@ -5,3 +5,10 @@ openai
 langchain
 python-dotenv
 ruff
+typing
+numpy
+mediapipe
+ultralytics
+cv2
+io
+PIL
